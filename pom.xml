@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.mikeprimm</groupId>
   <artifactId>SchematicBrush</artifactId>
-  <version>0.6.0</version>
+  <version>0.7.0</version>
 	<build>
 		<resources>
 			<resource>
@@ -60,7 +60,7 @@
 		<dependency>
 			<groupId>org.spongepowered</groupId>
 			<artifactId>spongeapi</artifactId>
-			<version>6.0.0</version>
+			<version>7.3.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.sk89q.worldedit</groupId>
