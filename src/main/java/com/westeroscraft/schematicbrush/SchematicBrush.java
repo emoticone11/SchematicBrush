@@ -98,6 +98,7 @@ public class SchematicBrush {
 			BUILDER.comment("Module options");
 			BUILDER.push("debug");
 			debugLog = BUILDER.comment("Debug logging").define("debugLog", false);
+			BUILDER.pop();
 			SPEC = BUILDER.build();
 		}
 	}
