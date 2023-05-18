@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "com.westeroscraft.schematicbrush.mixin",
+	"compatibilityLevel": "JAVA_17",
+	"refmap": "schematicbrush.refmap.json",
+	"mixins": [
+	],
+	"client": [ 
+	],
+	"minVersion": "0.8"
+}
