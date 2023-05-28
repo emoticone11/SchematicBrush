@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.mikeprimm</groupId>
   <artifactId>SchematicBrush</artifactId>
-  <version>0.7.0</version>
+  <version>0.7.1</version>
 	<build>
 		<resources>
 			<resource>
@@ -41,8 +41,8 @@
 	</properties>
 	<repositories>
         <repository>
-            <id>sk89q-snapshots</id>
-            <url>http://maven.sk89q.com/artifactory/repo</url>
+            <id>enginehub-snapshots</id>
+            <url>https://maven.enginehub.org/repo/</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
