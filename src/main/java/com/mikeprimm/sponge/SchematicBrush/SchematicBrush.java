@@ -4,6 +4,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
@@ -1019,6 +1020,7 @@ public class SchematicBrush {
 		private int startX, startY, startZ;
 		private Location loc;
 		private int maxz;
+		FileWriter fos;
 
 		public ApplyAllJob(List<String> f, Player p, Actor a) {
 			files = f;
@@ -1029,12 +1031,22 @@ public class SchematicBrush {
 			startY = loc.getBlockY();
 			startZ = loc.getBlockZ();
 			maxz = 0;
+			try {
+				fos = new FileWriter("schapplyall.txt");
+			} catch (IOException iox) {
+				logger.error("Error opening writer for schapplyall.txt", iox);
+			}
 		}
 
 		public void run() {
 			if (idx >= files.size()) {
 				actor.print("Done!");
 				pending.remove(this);
+				try {
+					fos.close();
+				} catch (IOException iox) {
+					logger.error("Error closing writer for schapplyall.txt", iox);					
+				}
 				return;
 			}
 			String fname = files.get(idx);
@@ -1072,12 +1084,14 @@ public class SchematicBrush {
 			PasteBuilder pb = cliph.createPaste(editsession, editsession.getWorld().getWorldData()).to(ploc)
 					.ignoreAirBlocks(false);
 			actor.print(fname + ": origin=" + ploc + ", min=" + minPos + ", max=" + maxPos);
-			logger.info(fname + ": origin=" + ploc + ", min=" + minPos + ", max=" + maxPos);
+			logger.info(fname + ": origin=" + ploc + ", min=" + minPos + ", max=" + maxPos + ", lwh=" + region.getLength() + "," + region.getWidth() + "," + region.getHeight());
 			try {
 				Operations.completeLegacy(pb.build());
 				//Operations.complete(pb.build());
 				//Operations.complete(editsession.commit());				
 				actor.print("applied " + fname + " at " + ploc.getBlockX() + "," + ploc.getBlockY() + "," + ploc.getBlockZ());
+				fos.write(String.format("%s: origin=%d:%d:%d, min=%d:%d:%d, max=%d:%d:%d\n", fname, ploc.getBlockX(), ploc.getBlockY(), ploc.getBlockZ(),
+					minPos.getBlockX(), minPos.getBlockY(), minPos.getBlockZ(), maxPos.getBlockX(), maxPos.getBlockY(), maxPos.getBlockZ()));
 			} catch (Exception x) {
 				actor.printError("Error applying " + x);
 			}
