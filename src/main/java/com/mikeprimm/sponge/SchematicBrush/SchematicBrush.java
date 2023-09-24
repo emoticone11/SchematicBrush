@@ -51,6 +51,7 @@ import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.blocks.BaseBlock;
 import com.sk89q.worldedit.blocks.BlockID;
+import com.sk89q.worldedit.blocks.SignBlock;
 import com.sk89q.worldedit.command.tool.BrushTool;
 import com.sk89q.worldedit.command.tool.InvalidToolBindException;
 import com.sk89q.worldedit.command.tool.brush.Brush;
@@ -1059,17 +1060,19 @@ public class SchematicBrush {
 			Region region = clip.getRegion();
 			Vector clipOrigin = clip.getOrigin();
 			Vector minOffset = region.getMinimumPoint().subtract(clipOrigin);
-			actor.print("origin=" + clipOrigin + ", min=" + region.getMinimumPoint() + ", max=" + region.getMaximumPoint() + ", center=" + region.getCenter() + ", offset=" + minOffset);
 			// Set position based on location, so that player is at origin - also, make sure minimumY is consistent with start position
-			Vector ploc = new Vector(loc.getBlockX() - minOffset.getX(), startY - minOffset.getY(), loc.getBlockZ() - minOffset.getZ());
+			Vector ploc = new Vector(loc.getBlockX() - minOffset.getBlockX(), startY - minOffset.getBlockY(), loc.getBlockZ() - minOffset.getBlockZ());
 			player.setPosition(ploc);// Move player there
 			maxz = Math.max(maxz, region.getLength());
+			Vector minPos = region.getMinimumPoint().subtract(clipOrigin).add(ploc);
+			Vector maxPos = region.getMaximumPoint().subtract(clipOrigin).add(ploc);
 						
 			// And apply clipboard to edit session
 			EditSession editsession = sess.createEditSession(player);
 			PasteBuilder pb = cliph.createPaste(editsession, editsession.getWorld().getWorldData()).to(ploc)
 					.ignoreAirBlocks(false);
-			logger.info("applying " + fname + " at " + ploc.getBlockX() + "," + ploc.getBlockY() + "," + ploc.getBlockZ());
+			actor.print(fname + ": origin=" + ploc + ", min=" + minPos + ", max=" + maxPos);
+			logger.info(fname + ": origin=" + ploc + ", min=" + minPos + ", max=" + maxPos);
 			try {
 				Operations.completeLegacy(pb.build());
 				//Operations.complete(pb.build());
