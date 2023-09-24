@@ -1084,7 +1084,7 @@ public class SchematicBrush {
 			PasteBuilder pb = cliph.createPaste(editsession, editsession.getWorld().getWorldData()).to(ploc)
 					.ignoreAirBlocks(false);
 			actor.print(fname + ": origin=" + ploc + ", min=" + minPos + ", max=" + maxPos);
-			logger.info(fname + ": origin=" + ploc + ", min=" + minPos + ", max=" + maxPos + ", lwh=" + region.getLength() + "," + region.getWidth() + "," + region.getHeight());
+			logger.info(fname + ": origin=" + ploc + ", min=" + minPos + ", max=" + maxPos + ", whl=" + region.getWidth() + "," + region.getHeight() + "," + region.getLength());
 			try {
 				Operations.completeLegacy(pb.build());
 				//Operations.complete(pb.build());
