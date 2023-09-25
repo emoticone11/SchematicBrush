@@ -1098,7 +1098,7 @@ public class SchematicBrush {
 			actor.print("done with " + fname);
 			// See if time for another row
 			loc = loc.setX(loc.getBlockX() + region.getWidth() + 4);
-			if (loc.getBlockX() > (startX + 1000)) {
+			if (loc.getBlockX() > (startX + 2500)) {
 				loc = loc.setZ(loc.getBlockZ() + maxz + 4);	// Advance to new column for Z
 				loc = loc.setX(startX);	// Reset back to start X
 				maxz = 0;	// And reset maximum
