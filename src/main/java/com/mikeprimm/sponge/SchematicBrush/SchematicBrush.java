@@ -1056,7 +1056,8 @@ public class SchematicBrush {
 			String schfilename = loadSchematicIntoClipboard(player, sess, fname, "schematic", minY);
 			if (schfilename == null) {
 				idx++;
-				actor.print("load failed idx=" + idx);
+				actor.print("Error loading " + fname);
+				logger.error("Error loading " + fname);
 				return;
 			}
 			ClipboardHolder cliph = null;
@@ -1065,6 +1066,7 @@ public class SchematicBrush {
 				cliph = sess.getClipboard();
 			} catch (EmptyClipboardException e) {
 				actor.printError("Schematic is empty for " + fname);
+				logger.error("Schematic is empty for " + fname);
 				idx++;
 				return;
 			}
@@ -1093,7 +1095,8 @@ public class SchematicBrush {
 				fos.write(String.format("%s: origin=%d:%d:%d, min=%d:%d:%d, max=%d:%d:%d\n", fname, ploc.getBlockX(), ploc.getBlockY(), ploc.getBlockZ(),
 					minPos.getBlockX(), minPos.getBlockY(), minPos.getBlockZ(), maxPos.getBlockX(), maxPos.getBlockY(), maxPos.getBlockZ()));
 			} catch (Exception x) {
-				actor.printError("Error applying " + x);
+				actor.printError("Error applying " + fname);
+				logger.error("Error applying " + fname, x);
 			}
 			actor.print("done with " + fname);
 			// See if time for another row
