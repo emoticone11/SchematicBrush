@@ -63,7 +63,9 @@ import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
 import com.sk89q.worldedit.function.mask.BlockMask;
+import com.sk89q.worldedit.function.operation.Operation;
 import com.sk89q.worldedit.function.operation.Operations;
+import com.sk89q.worldedit.function.operation.RunContext;
 import com.sk89q.worldedit.math.transform.AffineTransform;
 import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.regions.Region;
@@ -423,7 +425,7 @@ public class SchematicBrush {
 				}
 			}
 		};
-		Task.builder().intervalTicks(20).execute(this.tickhandler).submit(this);
+		Task.builder().intervalTicks(2).execute(this.tickhandler).submit(this);
 	}
 
 	@Listener
@@ -1021,6 +1023,8 @@ public class SchematicBrush {
 		private Location loc;
 		private int maxz;
 		FileWriter fos;
+		Operation pendingOp;
+		String pendingFname;
 
 		public ApplyAllJob(List<String> f, Player p, Actor a) {
 			files = f;
@@ -1039,8 +1043,15 @@ public class SchematicBrush {
 		}
 
 		public void run() {
+			if (pendingOp != null) {
+				try {
+					pendingOp = pendingOp.resume(new RunContext());
+				} catch (WorldEditException wx) {
+					logger.error("Error applying " + pendingFname, wx);
+				}
+				return;
+			}
 			if (idx >= files.size()) {
-				actor.print("Done!");
 				pending.remove(this);
 				try {
 					fos.close();
@@ -1050,13 +1061,11 @@ public class SchematicBrush {
 				return;
 			}
 			String fname = files.get(idx);
-			actor.print("load idx=" + idx + ": " + files.get(idx));
 			LocalSession sess = we.getSessionManager().get(actor);
 			int[] minY = new int[1];
 			String schfilename = loadSchematicIntoClipboard(player, sess, fname, "schematic", minY);
 			if (schfilename == null) {
 				idx++;
-				actor.print("Error loading " + fname);
 				logger.error("Error loading " + fname);
 				return;
 			}
@@ -1065,7 +1074,6 @@ public class SchematicBrush {
 			try {
 				cliph = sess.getClipboard();
 			} catch (EmptyClipboardException e) {
-				actor.printError("Schematic is empty for " + fname);
 				logger.error("Schematic is empty for " + fname);
 				idx++;
 				return;
@@ -1076,7 +1084,6 @@ public class SchematicBrush {
 			Vector minOffset = region.getMinimumPoint().subtract(clipOrigin);
 			// Set position based on location, so that player is at origin - also, make sure minimumY is consistent with start position
 			Vector ploc = new Vector(loc.getBlockX() - minOffset.getBlockX(), startY - minOffset.getBlockY(), loc.getBlockZ() - minOffset.getBlockZ());
-			player.setPosition(ploc);// Move player there
 			maxz = Math.max(maxz, region.getLength());
 			Vector minPos = region.getMinimumPoint().subtract(clipOrigin).add(ploc);
 			Vector maxPos = region.getMaximumPoint().subtract(clipOrigin).add(ploc);
@@ -1085,20 +1092,15 @@ public class SchematicBrush {
 			EditSession editsession = sess.createEditSession(player);
 			PasteBuilder pb = cliph.createPaste(editsession, editsession.getWorld().getWorldData()).to(ploc)
 					.ignoreAirBlocks(false);
-			actor.print(fname + ": origin=" + ploc + ", min=" + minPos + ", max=" + maxPos);
 			logger.info(fname + ": origin=" + ploc + ", min=" + minPos + ", max=" + maxPos + ", whl=" + region.getWidth() + "," + region.getHeight() + "," + region.getLength());
 			try {
-				Operations.completeLegacy(pb.build());
-				//Operations.complete(pb.build());
-				//Operations.complete(editsession.commit());				
-				actor.print("applied " + fname + " at " + ploc.getBlockX() + "," + ploc.getBlockY() + "," + ploc.getBlockZ());
 				fos.write(String.format("%s: origin=%d:%d:%d, min=%d:%d:%d, max=%d:%d:%d\n", fname, ploc.getBlockX(), ploc.getBlockY(), ploc.getBlockZ(),
 					minPos.getBlockX(), minPos.getBlockY(), minPos.getBlockZ(), maxPos.getBlockX(), maxPos.getBlockY(), maxPos.getBlockZ()));
-			} catch (Exception x) {
-				actor.printError("Error applying " + fname);
-				logger.error("Error applying " + fname, x);
+			} catch (IOException iox) {
+				logger.error("Error writing to log");				
 			}
-			actor.print("done with " + fname);
+			pendingOp = pb.build();
+
 			// See if time for another row
 			loc = loc.setX(loc.getBlockX() + region.getWidth() + 4);
 			if (loc.getBlockX() > (startX + 2500)) {
