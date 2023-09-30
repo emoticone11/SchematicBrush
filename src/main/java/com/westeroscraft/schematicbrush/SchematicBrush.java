@@ -2,19 +2,26 @@ package com.westeroscraft.schematicbrush;
 
 import net.minecraft.CrashReport;
 import net.minecraft.ReportedException;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.fml.IExtensionPoint;
+import net.minecraftforge.fml.ModContainer;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.network.NetworkConstants;
 
+import com.mojang.brigadier.CommandDispatcher;
+import com.sk89q.worldedit.forge.ForgeWorldEdit;
+import com.westeroscraft.schematicbrush.commands.SCHBRCommand;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,6 +30,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(SchematicBrush.MOD_ID)
@@ -37,13 +45,11 @@ public class SchematicBrush {
 
 	public static Path modConfigPath;
 
+	public static ModContainer we;
+	public static ForgeWorldEdit wep;
+	
 	
 	public SchematicBrush() {
-		// Register the doClientStuff method for modloading
-		FMLJavaModLoadingContext.get().getModEventBus().addListener(this::doClientStuff);
-		// Register the doClientStuff method for modloading
-		FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetupEvent);
-
 		// Register ourselves for server and other game events we are interested in
 		MinecraftForge.EVENT_BUS.register(this);
 
@@ -59,6 +65,9 @@ public class SchematicBrush {
 		} catch (IOException e) {
 			log.error("Failed to create schematicbrush config directory", e);
 		}
+		// Set to be server only
+		ModLoadingContext.get().registerExtensionPoint(IExtensionPoint.DisplayTest.class, 
+        		()->new IExtensionPoint.DisplayTest(()->NetworkConstants.IGNORESERVERONLY, (remote, isServer)-> true));
 
 		ModLoadingContext.get().registerConfig(net.minecraftforge.fml.config.ModConfig.Type.COMMON, Config.SPEC,
 				MOD_ID + "/" + MOD_ID + ".toml");
@@ -71,9 +80,10 @@ public class SchematicBrush {
 
 	@SubscribeEvent
 	public void onRegisterCommandEvent(RegisterCommandsEvent event) {
-	    //CommandDispatcher<CommandSourceStack> commandDispatcher = event.getDispatcher();
+	    CommandDispatcher<CommandSourceStack> commandDispatcher = event.getDispatcher();
 		//PTimeCommand.register(commandDispatcher);
 		//PWeatherCommand.register(commandDispatcher);
+	    SCHBRCommand.register(commandDispatcher);
 	}
 
 	@SubscribeEvent
@@ -104,7 +114,18 @@ public class SchematicBrush {
 	}
 
     @SubscribeEvent
-    public void onCommonSetupEvent(FMLCommonSetupEvent event) {
+    public void onServerStartingEvent(ServerStartingEvent event) {
+    	ModContainer ourMod = ModList.get().getModContainerById(MOD_ID).get();
+        log.info("SchematicBrush v" + ourMod.getModInfo().getVersion() + " loaded");
+
+        Optional<? extends ModContainer> worldedit = ModList.get().getModContainerById("worldedit");
+        if (!worldedit.isPresent()) {
+            log.error("WorldEdit not found!!");
+        	return;
+        }
+        we = worldedit.get();
+        wep = (ForgeWorldEdit) we.getMod();        
+        log.info("Found worldedit " + we.getModInfo().getVersion());
     }
     
     public static void debugLog(String msg) {
