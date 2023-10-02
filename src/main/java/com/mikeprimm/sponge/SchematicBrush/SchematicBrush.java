@@ -1071,7 +1071,7 @@ public class SchematicBrush {
 					return;
 				}
 				else {
-					fname = filesbo2.get(idx);
+					fname = filesbo2.get(idx2);
 					String schfilename = loadSchematicIntoClipboard(player, sess, fname, "bo2", minY);
 					if (schfilename == null) {
 						idx2++;
@@ -1085,6 +1085,7 @@ public class SchematicBrush {
 						idx2++;
 						return;
 					}					
+					idx2++;
 				}
 			}
 			else {
@@ -1102,6 +1103,7 @@ public class SchematicBrush {
 					idx++;
 					return;
 				}
+				idx++;
 			}
 			clip = cliph.getClipboard();
 			Region region = clip.getRegion();
@@ -1133,7 +1135,6 @@ public class SchematicBrush {
 				loc = loc.setX(startX);	// Reset back to start X
 				maxz = 0;	// And reset maximum
 			}
-			idx++;
 		}
 	}
 
@@ -1173,6 +1174,7 @@ public class SchematicBrush {
 			List<String> filesbo2 = getMatchingFiles(dir, pbo2);
 			
 			Collections.sort(files);
+			Collections.sort(filesbo2);
 			actor.print("Got " + files.size() + " schematics");
 			actor.print("Got " + filesbo2.size() + " bo2");
 			pending.add(new ApplyAllJob(files, filesbo2, player, actor));
