@@ -71,6 +71,7 @@ import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.session.PasteBuilder;
+import com.sk89q.worldedit.session.SessionOwner;
 import com.sk89q.worldedit.sponge.SpongeWorldEdit;
 import com.sk89q.worldedit.util.Direction;
 import com.sk89q.worldedit.util.Location;
@@ -1051,10 +1052,11 @@ public class SchematicBrush {
 					pendingOp = pendingOp.resume(new RunContext());
 				} catch (WorldEditException wx) {
 					logger.error("Error applying " + pendingFname, wx);
+					pendingOp = null;
 				}
 				return;
 			}
-			LocalSession sess = we.getSessionManager().get(actor);
+			LocalSession sess = we.getSessionManager().get(actor);				
 			int[] minY = new int[1];
 			ClipboardHolder cliph = null;
 			Clipboard clip = null;
@@ -1126,7 +1128,12 @@ public class SchematicBrush {
 			} catch (IOException iox) {
 				logger.error("Error writing to log");				
 			}
-			pendingOp = pb.build();
+			try {
+				Operations.complete(pb.build());
+				Operations.complete(editsession.commit());
+			} catch (WorldEditException x) {
+				logger.error("Error completing paste");								
+			}
 
 			// See if time for another row
 			loc = loc.setX(loc.getBlockX() + region.getWidth() + 4);
