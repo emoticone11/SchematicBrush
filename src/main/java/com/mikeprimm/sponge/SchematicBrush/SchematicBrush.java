@@ -1016,7 +1016,9 @@ public class SchematicBrush {
 
 	public class ApplyAllJob implements Runnable {
 		List<String> files;
+		List<String> filesbo2;
 		int idx = 0;
+		int idx2 = 0;
 		Player player;
 		Actor actor;
 		private int startX, startY, startZ;
@@ -1026,8 +1028,9 @@ public class SchematicBrush {
 		Operation pendingOp;
 		String pendingFname;
 
-		public ApplyAllJob(List<String> f, Player p, Actor a) {
+		public ApplyAllJob(List<String> f, List<String> fbo, Player p, Actor a) {
 			files = f;
+			filesbo2 = fbo;
 			actor = a;
 			player = p;
 			loc = p.getLocation();
@@ -1051,32 +1054,54 @@ public class SchematicBrush {
 				}
 				return;
 			}
-			if (idx >= files.size()) {
-				pending.remove(this);
-				try {
-					fos.close();
-				} catch (IOException iox) {
-					logger.error("Error closing writer for schapplyall.txt", iox);					
-				}
-				return;
-			}
-			String fname = files.get(idx);
 			LocalSession sess = we.getSessionManager().get(actor);
 			int[] minY = new int[1];
-			String schfilename = loadSchematicIntoClipboard(player, sess, fname, "schematic", minY);
-			if (schfilename == null) {
-				idx++;
-				logger.error("Error loading " + fname);
-				return;
-			}
 			ClipboardHolder cliph = null;
 			Clipboard clip = null;
-			try {
-				cliph = sess.getClipboard();
-			} catch (EmptyClipboardException e) {
-				logger.error("Schematic is empty for " + fname);
-				idx++;
-				return;
+			String fname;
+
+			if (idx >= files.size()) {
+				if (idx2 >= filesbo2.size()) {
+					pending.remove(this);
+					try {
+						fos.close();
+					} catch (IOException iox) {
+						logger.error("Error closing writer for schapplyall.txt", iox);					
+					}
+					return;
+				}
+				else {
+					fname = filesbo2.get(idx);
+					String schfilename = loadSchematicIntoClipboard(player, sess, fname, "bo2", minY);
+					if (schfilename == null) {
+						idx2++;
+						logger.error("Error loading " + fname);
+						return;
+					}
+					try {
+						cliph = sess.getClipboard();
+					} catch (EmptyClipboardException e) {
+						logger.error("Schematic is empty for " + fname);
+						idx2++;
+						return;
+					}					
+				}
+			}
+			else {
+				fname = files.get(idx);
+				String schfilename = loadSchematicIntoClipboard(player, sess, fname, "schematic", minY);
+				if (schfilename == null) {
+					idx++;
+					logger.error("Error loading " + fname);
+					return;
+				}
+				try {
+					cliph = sess.getClipboard();
+				} catch (EmptyClipboardException e) {
+					logger.error("Schematic is empty for " + fname);
+					idx++;
+					return;
+				}
 			}
 			clip = cliph.getClipboard();
 			Region region = clip.getRegion();
@@ -1138,9 +1163,19 @@ public class SchematicBrush {
 			}
 			final Pattern p = Pattern.compile(".*\\." + fmt);
 			List<String> files = getMatchingFiles(dir, p);
+			fmt = "bo2";
+			dir = getDirectoryForFormat(fmt); // Get directory for extension
+			if (dir == null) {
+				actor.printError("Invalid format: " + fmt);
+				return CommandResult.empty();
+			}
+			final Pattern pbo2 = Pattern.compile(".*\\." + fmt);
+			List<String> filesbo2 = getMatchingFiles(dir, pbo2);
+			
 			Collections.sort(files);
 			actor.print("Got " + files.size() + " schematics");
-			pending.add(new ApplyAllJob(files, player, actor));
+			actor.print("Got " + filesbo2.size() + " bo2");
+			pending.add(new ApplyAllJob(files, filesbo2, player, actor));
 			return CommandResult.success();
 		}
 	}
