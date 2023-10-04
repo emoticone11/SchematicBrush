@@ -4,6 +4,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -1018,6 +1019,8 @@ public class SchematicBrush {
 	public class ApplyAllJob implements Runnable {
 		List<String> files;
 		List<String> filesbo2;
+		File pendingf;
+		File logf;
 		int idx = 0;
 		int idx2 = 0;
 		Player player;
@@ -1025,11 +1028,12 @@ public class SchematicBrush {
 		private int startX, startY, startZ;
 		private Location loc;
 		private int maxz;
-		FileWriter fos;
 		Operation pendingOp;
 		String pendingFname;
 
 		public ApplyAllJob(List<String> f, List<String> fbo, Player p, Actor a) {
+			pendingf = new File("schapplyall.pending");
+			logf = new File("schapplyall.txt");
 			files = f;
 			filesbo2 = fbo;
 			actor = a;
@@ -1039,11 +1043,37 @@ public class SchematicBrush {
 			startY = loc.getBlockY();
 			startZ = loc.getBlockZ();
 			maxz = 0;
-			try {
-				fos = new FileWriter("schapplyall.txt");
+			// See if continuing pending
+			loadPending();
+		}
+		
+		private void loadPending() {
+			try (BufferedReader br = new BufferedReader(new FileReader(pendingf))) {
+			    String line = br.readLine(); // Only one line
+			    String[] toks = line.split(",");
+			    startX = Integer.parseInt(toks[0]);
+			    startY = Integer.parseInt(toks[1]);
+			    startZ = Integer.parseInt(toks[2]);
+			    loc = new Location(loc.getExtent(), Integer.parseInt(toks[3]), Integer.parseInt(toks[4]), Integer.parseInt(toks[5]));
+			    maxz = Integer.parseInt(toks[6]);
+			    idx = Integer.parseInt(toks[7]);
+			    idx2 = Integer.parseInt(toks[8]);
+				logger.info("Continuing pending schapplyall");			    
 			} catch (IOException iox) {
-				logger.error("Error opening writer for schapplyall.txt", iox);
+				logf.delete(); // No pending, so clean up log
 			}
+		}
+		private void savePending() {
+			try (FileWriter bw = new FileWriter(pendingf)) {
+				String line = String.format("%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+					startX, startY, startZ,
+					loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(),
+					maxz, idx, idx2);
+				bw.write(line);
+			} catch (IOException iox) {
+				
+			}
+			
 		}
 
 		public void run() {
@@ -1062,21 +1092,17 @@ public class SchematicBrush {
 			Clipboard clip = null;
 			String fname;
 
-			if (idx >= files.size()) {
-				if (idx2 >= filesbo2.size()) {
+			if (idx2 >= filesbo2.size()) {
+				if (idx >= files.size()) {
 					pending.remove(this);
-					try {
-						fos.close();
-					} catch (IOException iox) {
-						logger.error("Error closing writer for schapplyall.txt", iox);					
-					}
+					pendingf.delete();	// Clean up pending - we're done
 					return;
 				}
 				else {
-					fname = filesbo2.get(idx2);
-					String schfilename = loadSchematicIntoClipboard(player, sess, fname, "bo2", minY);
+					fname = files.get(idx);
+					String schfilename = loadSchematicIntoClipboard(player, sess, fname, "schematic", minY);
 					if (schfilename == null) {
-						idx2++;
+						idx++;
 						logger.error("Error loading " + fname);
 						return;
 					}
@@ -1084,17 +1110,17 @@ public class SchematicBrush {
 						cliph = sess.getClipboard();
 					} catch (EmptyClipboardException e) {
 						logger.error("Schematic is empty for " + fname);
-						idx2++;
+						idx++;
 						return;
-					}					
-					idx2++;
+					}
+					idx++;
 				}
 			}
 			else {
-				fname = files.get(idx);
-				String schfilename = loadSchematicIntoClipboard(player, sess, fname, "schematic", minY);
+				fname = filesbo2.get(idx2);
+				String schfilename = loadSchematicIntoClipboard(player, sess, fname, "bo2", minY);
 				if (schfilename == null) {
-					idx++;
+					idx2++;
 					logger.error("Error loading " + fname);
 					return;
 				}
@@ -1102,11 +1128,12 @@ public class SchematicBrush {
 					cliph = sess.getClipboard();
 				} catch (EmptyClipboardException e) {
 					logger.error("Schematic is empty for " + fname);
-					idx++;
+					idx2++;
 					return;
-				}
-				idx++;
+				}					
+				idx2++;
 			}
+
 			clip = cliph.getClipboard();
 			Region region = clip.getRegion();
 			Vector clipOrigin = clip.getOrigin();
@@ -1122,7 +1149,7 @@ public class SchematicBrush {
 			PasteBuilder pb = cliph.createPaste(editsession, editsession.getWorld().getWorldData()).to(ploc)
 					.ignoreAirBlocks(false);
 			logger.info(fname + ": origin=" + ploc + ", min=" + minPos + ", max=" + maxPos + ", whl=" + region.getWidth() + "," + region.getHeight() + "," + region.getLength());
-			try {
+			try (FileWriter fos = new FileWriter(logf, true)) {
 				fos.write(String.format("%s: origin=%d:%d:%d, min=%d:%d:%d, max=%d:%d:%d\n", fname, ploc.getBlockX(), ploc.getBlockY(), ploc.getBlockZ(),
 					minPos.getBlockX(), minPos.getBlockY(), minPos.getBlockZ(), maxPos.getBlockX(), maxPos.getBlockY(), maxPos.getBlockZ()));
 			} catch (IOException iox) {
@@ -1130,10 +1157,11 @@ public class SchematicBrush {
 			}
 			try {
 				Operations.complete(pb.build());
-				Operations.complete(editsession.commit());
+				//Operations.complete(editsession.commit());
 			} catch (WorldEditException x) {
 				logger.error("Error completing paste");								
 			}
+			sess.clearHistory();
 
 			// See if time for another row
 			loc = loc.setX(loc.getBlockX() + region.getWidth() + 4);
@@ -1142,6 +1170,7 @@ public class SchematicBrush {
 				loc = loc.setX(startX);	// Reset back to start X
 				maxz = 0;	// And reset maximum
 			}
+			savePending();
 		}
 	}
 
