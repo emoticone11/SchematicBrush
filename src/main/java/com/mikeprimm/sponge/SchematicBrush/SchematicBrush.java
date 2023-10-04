@@ -14,11 +14,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.TreeSet;
+import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -53,7 +55,6 @@ import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.blocks.BaseBlock;
 import com.sk89q.worldedit.blocks.BlockID;
-import com.sk89q.worldedit.blocks.SignBlock;
 import com.sk89q.worldedit.command.tool.BrushTool;
 import com.sk89q.worldedit.command.tool.InvalidToolBindException;
 import com.sk89q.worldedit.command.tool.brush.Brush;
@@ -72,7 +73,6 @@ import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.session.PasteBuilder;
-import com.sk89q.worldedit.session.SessionOwner;
 import com.sk89q.worldedit.sponge.SpongeWorldEdit;
 import com.sk89q.worldedit.util.Direction;
 import com.sk89q.worldedit.util.Location;
@@ -359,7 +359,7 @@ public class SchematicBrush {
 	}
 
 	private Runnable tickhandler;
-	private List<Runnable> pending = new ArrayList<Runnable>();
+	private List<Callable<Boolean>> pending = new ArrayList<Callable<Boolean>>();
 
 	@Listener
 	public void onGamePreInitialization(GamePreInitializationEvent e) {
@@ -422,8 +422,18 @@ public class SchematicBrush {
 				Arrays.asList("clipboardinfo"));
 		tickhandler = new Runnable() {
 			public void run() {
-				for (Runnable r : pending) {
-					r.run();
+				Iterator<Callable<Boolean>> iter = pending.iterator();
+				while (iter.hasNext()) {
+					Callable<Boolean> r = iter.next();
+					Boolean rslt;
+					try {
+						rslt = r.call();
+					} catch (Exception x) {
+						rslt = Boolean.FALSE;
+					}
+					if (!rslt) {
+						iter.remove();
+					}
 				}
 			}
 		};
@@ -1016,7 +1026,7 @@ public class SchematicBrush {
 		return matches;
 	}
 
-	public class ApplyAllJob implements Runnable {
+	public class ApplyAllJob implements Callable<Boolean> {
 		List<String> files;
 		List<String> filesbo2;
 		File pendingf;
@@ -1076,7 +1086,7 @@ public class SchematicBrush {
 			
 		}
 
-		public void run() {
+		public Boolean call() {
 			if (pendingOp != null) {
 				try {
 					pendingOp = pendingOp.resume(new RunContext());
@@ -1084,7 +1094,7 @@ public class SchematicBrush {
 					logger.error("Error applying " + pendingFname, wx);
 					pendingOp = null;
 				}
-				return;
+				return Boolean.TRUE;
 			}
 			LocalSession sess = we.getSessionManager().get(actor);				
 			int[] minY = new int[1];
@@ -1096,7 +1106,7 @@ public class SchematicBrush {
 				if (idx >= files.size()) {
 					pending.remove(this);
 					pendingf.delete();	// Clean up pending - we're done
-					return;
+					return Boolean.FALSE;
 				}
 				else {
 					fname = files.get(idx);
@@ -1104,14 +1114,14 @@ public class SchematicBrush {
 					if (schfilename == null) {
 						idx++;
 						logger.error("Error loading " + fname);
-						return;
+						return Boolean.TRUE;
 					}
 					try {
 						cliph = sess.getClipboard();
 					} catch (EmptyClipboardException e) {
 						logger.error("Schematic is empty for " + fname);
 						idx++;
-						return;
+						return Boolean.TRUE;
 					}
 					idx++;
 				}
@@ -1122,14 +1132,14 @@ public class SchematicBrush {
 				if (schfilename == null) {
 					idx2++;
 					logger.error("Error loading " + fname);
-					return;
+					return Boolean.TRUE;
 				}
 				try {
 					cliph = sess.getClipboard();
 				} catch (EmptyClipboardException e) {
 					logger.error("Schematic is empty for " + fname);
 					idx2++;
-					return;
+					return Boolean.TRUE;
 				}					
 				idx2++;
 			}
@@ -1171,6 +1181,7 @@ public class SchematicBrush {
 				maxz = 0;	// And reset maximum
 			}
 			savePending();
+			return Boolean.TRUE;
 		}
 	}
 
