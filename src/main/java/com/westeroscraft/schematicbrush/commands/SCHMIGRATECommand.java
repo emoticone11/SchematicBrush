@@ -192,7 +192,9 @@ public class SCHMIGRATECommand {
 				actor.print("Schematic save error - " + e.getMessage());
 				return Boolean.FALSE;
             }
-            actor.print(String.format("Wrote %s (%d bytes)", f.getAbsolutePath(), f.length()));
+            String msg = String.format("Wrote %s (%d bytes)", f.getAbsolutePath(), f.length());
+            SchematicBrush.log.info(msg);
+            actor.print(msg);
             savePending();
             return Boolean.TRUE;
 		}
