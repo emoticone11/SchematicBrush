@@ -5,6 +5,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -114,6 +115,7 @@ public class SCHMIGRATECommand {
 				job.actor = ForgeAdapter.adaptPlayer(player);
 				job.world = ForgeAdapter.adapt(player.getLevel());
 		        job.editSession = job.session.createEditSession(job.actor);
+		        job.loadPending();
 				sb.addJob(job);
 			} catch (IOException iox) {
 				source.sendFailure(new TextComponent("Error reading schapplyall.txt"));
@@ -130,6 +132,7 @@ public class SCHMIGRATECommand {
 		public LocalSession session;
 		public EditSession editSession;
 		public World world;
+		File pendingf = new File("schmigrate.pending");
 		List<SchRecord> recs;
 		int idx = 0;
 		Actor actor;
@@ -177,8 +180,6 @@ public class SCHMIGRATECommand {
 	        ForwardExtentCopy copy = new ForwardExtentCopy(editSession, region, cb, region.getMinimumPoint());
 	        Operations.completeLegacy(copy);
 	        ClipboardHolder holder = new ClipboardHolder(cb);
-	        SchematicBrush.log.info(cb.getRegion());
-	        SchematicBrush.log.info(cb.getDimensions());
 	        session.setClipboard(holder);
 
             try (Closer closer = Closer.create()) {
@@ -192,9 +193,24 @@ public class SCHMIGRATECommand {
 				return Boolean.FALSE;
             }
             actor.print(String.format("Wrote %s (%d bytes)", f.getAbsolutePath(), f.length()));
-
+            savePending();
             return Boolean.TRUE;
 		}
-		
+		private void loadPending() {
+			try (BufferedReader br = new BufferedReader(new FileReader(pendingf))) {
+			    String line = br.readLine(); // Only one line
+			    idx = Integer.parseInt(line.trim());
+				SchematicBrush.log.info("Continuing pending schmigrate");			    
+			} catch (IOException iox) {
+			}
+		}
+		private void savePending() {
+			try (FileWriter bw = new FileWriter(pendingf)) {
+				String line = String.format("%d", idx);
+				bw.write(line);
+			} catch (IOException iox) {
+				
+			}			
+		}		
 	}
 }
