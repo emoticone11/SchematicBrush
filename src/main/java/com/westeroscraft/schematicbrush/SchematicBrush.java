@@ -107,7 +107,7 @@ public class SchematicBrush {
     public void countTicks(ServerTickEvent event){
         if ((!ticking) || (event.phase != TickEvent.Phase.END)) return;
         ticks++;
-        if (ticks >= 20) {
+        if (ticks >= 5) {
 			Iterator<Callable<Boolean>> iter = pending.iterator();
 			while (iter.hasNext()) {
 				Callable<Boolean> r = iter.next();

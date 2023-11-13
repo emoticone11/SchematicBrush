@@ -8,8 +8,11 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.regex.Pattern;
 
 import org.enginehub.piston.exception.StopExecutionException;
 
@@ -28,6 +31,7 @@ import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.util.formatting.text.TranslatableComponent;
 import com.sk89q.worldedit.util.io.Closer;
 import com.sk89q.worldedit.world.World;
+import com.sk89q.worldedit.world.block.BlockState;
 import com.westeroscraft.schematicbrush.SchematicBrush;
 import com.sk89q.worldedit.forge.ForgeAdapter;
 import com.sk89q.worldedit.function.operation.ForwardExtentCopy;
@@ -37,11 +41,16 @@ import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.transform.Transform;
 import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.regions.RegionSelector;
+import com.sk89q.worldedit.regions.selector.limit.PermissiveSelectorLimits;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.TextComponent;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
 
 
@@ -68,6 +77,38 @@ public class SCHMIGRATECommand {
 		}
 	};
 	
+    private static List<String> getMatchingFiles(File dir, Pattern p) {
+        ArrayList<String> matches = new ArrayList<String>();
+        getMatchingFiles(matches, dir, p, null);
+        return matches;
+    }
+    
+    private static void buildTree(File dir, List<String> rslt, String path) {
+    	File[] lst = dir.listFiles();
+    	for (File f : lst) {
+            String n = (path == null) ? f.getName() : (path + "/" + f.getName());
+    		if (f.isDirectory()) {
+    			buildTree(f, rslt, n);
+    		}
+    		else {
+    			rslt.add(n);
+    		}
+    	}
+    }
+    
+    private static void getMatchingFiles(List<String> rslt, File dir, final Pattern p, final String path) {
+    	List<String> flist = null;
+    	if (flist == null) {
+    		flist = new ArrayList<String>();
+    		buildTree(dir, flist, null);
+    	}
+    	for (String fn : flist) {
+    		if (p.matcher(fn).matches()) {
+                rslt.add(fn);
+            }
+        }
+    }
+
 	public static int schMigrate(CommandSourceStack source) {
 		if (source.getEntity() instanceof ServerPlayer) {
 			ServerPlayer player = (ServerPlayer) source.getEntity();
@@ -108,14 +149,30 @@ public class SCHMIGRATECommand {
 					}					
 				}
 				SchematicBrush.log.info(String.format("Loaded %d schematic records", list.size()));
+				
+				LocalConfiguration config = SchematicBrush.worldEdit.getConfiguration();
+		        File dir = SchematicBrush.worldEdit.getWorkingDirectoryPath(config.saveDir).toFile();
+	    		final Pattern p = Pattern.compile(".*\\.schem");
+	    		List<String> files = getMatchingFiles(dir, p);
+	    		Collections.sort(files);
+				SchematicBrush.log.info(String.format("Found %d existing schem files", files.size()));
+	    		HashSet<String> fset = new HashSet<String>();
+	    		for (String v : files) {
+	    			String s = v.substring(0, v.lastIndexOf('.'));
+	    			fset.add(s);
+	    		}
+	    		
 				ApplyAllJob job = new ApplyAllJob();
-				job.session = SchematicBrush.wep.getSession(player);
 				job.recs = list;
+				job.existing = fset;
 				job.player = player;
+				job.level = player.getLevel();
 				job.actor = ForgeAdapter.adaptPlayer(player);
 				job.world = ForgeAdapter.adapt(player.getLevel());
-		        job.editSession = job.session.createEditSession(job.actor);
+				job.session = SchematicBrush.worldEdit.getSessionManager().get(job.actor);
+				job.editSession = job.session.createEditSession(job.actor);
 		        job.loadPending();
+		        job.pendingf.delete();
 				sb.addJob(job);
 			} catch (IOException iox) {
 				source.sendFailure(new TextComponent("Error reading schapplyall.txt"));
@@ -129,24 +186,58 @@ public class SCHMIGRATECommand {
 		return 1;
 	}
 	public static class ApplyAllJob implements Callable<Boolean> {
-		public LocalSession session;
-		public EditSession editSession;
 		public World world;
+		public ServerLevel level;
+		HashSet<String> existing;
 		File pendingf = new File("schmigrate.pending");
+		File skippedf = new File("schmigrate.skipped");
 		List<SchRecord> recs;
+		LocalSession session;
+		EditSession editSession;
 		int idx = 0;
 		Actor actor;
 		ServerPlayer player;
+		boolean doMove = true;
 		
 		@Override
 		public Boolean call() throws Exception {
+			while (idx < recs.size()) {
+				SchRecord rec = recs.get(idx);
+				if (existing.contains(rec.fname)) {
+					idx++;
+				}
+				else {
+					break;
+				}
+			}
 			if (idx >= recs.size()) {
+				editSession.close();
+				session.clearHistory();
+				pendingf.delete();
+	            String msg = "Done!";
+	            SchematicBrush.log.info(msg);
+	            actor.print(msg);	        	
 				return Boolean.FALSE;
 			}
 			SchRecord rec = recs.get(idx);
-			idx++;
-
-			//player.setPos(new Vec3(rec.originX, rec.originY, rec.originY));
+			if (doMove) {
+				// Make sure all chunks in needed volume are loaded
+				int minx = (rec.minX & 0xFFFFFFF0);
+				int minz = (rec.minZ & 0xFFFFFFF0);
+				int maxx = ((rec.maxX + 15) & 0xFFFFFFF0);
+				int maxz = ((rec.maxZ + 15) & 0xFFFFFFF0);
+				for (int x = minx; x <= maxx; x += 16) {
+					for (int z = minz; z <= maxz; z += 16) {
+					   ChunkAccess access = level.getChunk(x >> 4, z >> 4, ChunkStatus.FULL, true);
+					}
+				}
+				doMove = false;
+				return Boolean.TRUE;
+			}
+			else {
+				doMove = true;
+				idx++;
+			}
 			
 			LocalConfiguration config = SchematicBrush.worldEdit.getConfiguration();
 
@@ -168,34 +259,59 @@ public class SCHMIGRATECommand {
 	                        "worldedit.schematic.save.failed-directory"));
 	            }
 	        }
+
+	        //EditSession editSession = session.createEditSession(actor);
 			RegionSelector rsel = session.getRegionSelector(world);
 			rsel.clear();
-			rsel.selectPrimary(BlockVector3.at(rec.minX, rec.minY, rec.minZ), ActorSelectorLimits.forActor(actor));
-			rsel.selectSecondary(BlockVector3.at(rec.maxX, rec.maxY, rec.maxZ), ActorSelectorLimits.forActor(actor));	
+			rsel.selectPrimary(BlockVector3.at(rec.minX, rec.minY, rec.minZ), PermissiveSelectorLimits.getInstance());
+			rsel.selectSecondary(BlockVector3.at(rec.maxX, rec.maxY, rec.maxZ), PermissiveSelectorLimits.getInstance());	
 			rsel.learnChanges();
 			Region region = rsel.getRegion();
 	        BlockArrayClipboard cb = new BlockArrayClipboard(region);
 	        cb.setOrigin(BlockVector3.at(rec.originX, rec.originY, rec.originZ));
 	        
 	        ForwardExtentCopy copy = new ForwardExtentCopy(editSession, region, cb, region.getMinimumPoint());
+	        copy.setCopyingEntities(false);
 	        Operations.completeLegacy(copy);
+	        Operations.completeLegacy(cb.commit());
+	        boolean empty = true;
+	        for (int x = rec.minX; (empty) && (x <= rec.maxX); x++) {
+		        for (int y = rec.minY; (empty) && (y <= rec.maxY); y++) {
+			        for (int z = rec.minZ; (empty) && (z <= rec.maxZ); z++) {
+			        	BlockState bs = cb.getBlock(BlockVector3.at(x,  y, z));
+			        	if (!bs.getBlockType().getId().equals("minecraft:air")) {
+			        		empty = false;
+			        	}
+			        }
+		        }			        	
+	        }
 	        ClipboardHolder holder = new ClipboardHolder(cb);
 	        session.setClipboard(holder);
 
-            try (Closer closer = Closer.create()) {
-                FileOutputStream fos = closer.register(new FileOutputStream(f));
-                BufferedOutputStream bos = closer.register(new BufferedOutputStream(fos));
-                ClipboardWriter writer = closer.register(format.getWriter(bos));
-                writer.write(cb);
-            } catch (IOException e) {
-                f.delete();
-				actor.print("Schematic save error - " + e.getMessage());
-				return Boolean.FALSE;
-            }
-            String msg = String.format("Wrote %s (%d bytes)", f.getAbsolutePath(), f.length());
-            SchematicBrush.log.info(msg);
-            actor.print(msg);
+	        if (!empty) {
+	            try (Closer closer = Closer.create()) {
+	                FileOutputStream fos = closer.register(new FileOutputStream(f));
+	                BufferedOutputStream bos = closer.register(new BufferedOutputStream(fos));
+	                ClipboardWriter writer = closer.register(format.getWriter(bos));
+	                writer.write(cb);
+	            } catch (IOException e) {
+	                f.delete();
+					actor.print("Schematic save error - " + e.getMessage());
+					return Boolean.FALSE;
+	            }
+	            String msg = String.format("Wrote %s (%d bytes)", f.getAbsolutePath(), f.length());
+	            SchematicBrush.log.info(msg);
+	            actor.print(msg);
+	        }
+	        else {
+	            String msg = String.format("Empty clipboard for %s - skipped", f.getAbsolutePath());
+	            SchematicBrush.log.info(msg);
+	            actor.print(msg);	        	
+	            saveSkipped(rec.fname);
+	        }
             savePending();
+	        //editSession.close();
+            session.clearHistory();
             return Boolean.TRUE;
 		}
 		private void loadPending() {
@@ -210,6 +326,13 @@ public class SCHMIGRATECommand {
 			try (FileWriter bw = new FileWriter(pendingf)) {
 				String line = String.format("%d", idx);
 				bw.write(line);
+			} catch (IOException iox) {
+				
+			}			
+		}		
+		private void saveSkipped(String fname) {
+			try (FileWriter bw = new FileWriter(skippedf, true)) {
+				bw.write(fname + "\n");
 			} catch (IOException iox) {
 				
 			}			
