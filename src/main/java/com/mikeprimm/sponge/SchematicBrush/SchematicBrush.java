@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -1222,6 +1224,22 @@ public class SchematicBrush {
 			
 			Collections.sort(files);
 			Collections.sort(filesbo2);
+			File skipped = new File("schmigrate.skipped");
+			if (skipped.exists()) {
+				HashSet<String> set = new HashSet<String>();
+				try (BufferedReader rdr = new BufferedReader(new FileReader(skipped))) {
+					String line;
+					while ((line = rdr.readLine()) != null) {
+						line = line.trim();
+						if (line.length() > 0)
+							set.add(line);
+					}
+				} catch (IOException iox) {
+					actor.print("Error reading " + skipped.getAbsolutePath());
+				}
+				files = files.stream().filter(v -> set.contains(v.substring(0, v.lastIndexOf('.')))).collect(Collectors.toList());
+				filesbo2 = filesbo2.stream().filter(v -> set.contains(v.substring(0, v.lastIndexOf('.')))).collect(Collectors.toList());
+			}
 			actor.print("Got " + files.size() + " schematics");
 			actor.print("Got " + filesbo2.size() + " bo2");
 			pending.add(new ApplyAllJob(files, filesbo2, player, actor));
