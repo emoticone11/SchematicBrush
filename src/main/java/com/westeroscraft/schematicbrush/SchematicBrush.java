@@ -50,7 +50,12 @@ import com.sk89q.worldedit.util.io.Closer;
 import com.sk89q.worldedit.util.io.file.FilenameException;
 import com.sk89q.worldedit.world.block.BaseBlock;
 import com.sk89q.worldedit.world.block.BlockTypes;
+
 import com.westeroscraft.schematicbrush.commands.SCHMIGRATECommand;
+import com.westeroscraft.schematicbrush.commands.SCHBRCommand;
+import com.westeroscraft.schematicbrush.commands.SCHSETCommand;
+import com.westeroscraft.schematicbrush.commands.SCHLISTCommand;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -95,6 +100,7 @@ public class SchematicBrush {
 		// Register ourselves for server and other game events we are interested in
 		MinecraftForge.EVENT_BUS.register(this);
 	}
+
 	private boolean ticking;
 	private int ticks = 0;
 	private List<Callable<Boolean>> pending = new ArrayList<Callable<Boolean>>();
@@ -104,10 +110,12 @@ public class SchematicBrush {
 		ticking = true;
 	}
 	@SubscribeEvent
-    public void countTicks(ServerTickEvent event){
-        if ((!ticking) || (event.phase != TickEvent.Phase.END)) return;
-        ticks++;
-        if (ticks >= 5) {
+	public void countTicks(ServerTickEvent event) {
+		if ((!ticking) || (event.phase != TickEvent.Phase.END))
+			return;
+		
+		ticks++;
+		if (ticks >= 5) {
 			Iterator<Callable<Boolean>> iter = pending.iterator();
 			while (iter.hasNext()) {
 				Callable<Boolean> r = iter.next();
@@ -121,17 +129,20 @@ public class SchematicBrush {
 					iter.remove();
 				}
 			}
-			if (pending.size() == 0) ticking = false;
-        	ticks = 0;
-        }
-    }
+			if (pending.size() == 0)
+				ticking = false;
+			
+			ticks = 0;
+		}
+	}
 	
 	@SubscribeEvent
 	public void onRegisterCommandEvent(RegisterCommandsEvent event) {
-	    CommandDispatcher<CommandSourceStack> commandDispatcher = event.getDispatcher();
-		//PTimeCommand.register(commandDispatcher);
-		//PWeatherCommand.register(commandDispatcher);
-	    SCHMIGRATECommand.register(this, commandDispatcher);
+		CommandDispatcher<CommandSourceStack> commandDispatcher = event.getDispatcher();
+		SCHMIGRATECommand.register(this, commandDispatcher);
+		SCHBRCommand.register(this, commandDispatcher);
+		SCHSETCommand.register(this, commandDispatcher);
+		SCHLISTCommand.register(this, commandDispatcher);
 	}
 
 	@SubscribeEvent
@@ -147,23 +158,23 @@ public class SchematicBrush {
 		crash(new Exception(), msg);
 	}
 
-    @SubscribeEvent
-    public void onServerStartingEvent(ServerStartingEvent event) {
-    	ModContainer ourMod = ModList.get().getModContainerById(MOD_ID).get();
-        log.info("SchematicBrush v" + ourMod.getModInfo().getVersion() + " loaded");
+	@SubscribeEvent
+	public void onServerStartingEvent(ServerStartingEvent event) {
+		ModContainer ourMod = ModList.get().getModContainerById(MOD_ID).get();
+		log.info("SchematicBrush v" + ourMod.getModInfo().getVersion() + " loaded");
 
-        Optional<? extends ModContainer> worldedit = ModList.get().getModContainerById("worldedit");
-        if (!worldedit.isPresent()) {
-            log.error("WorldEdit not found!!");
-        	return;
-        }
-        we = worldedit.get();
-        wep = (ForgeWorldEdit) we.getMod();        
-        worldEdit = WorldEdit.getInstance();
-        log.info("Found worldedit " + we.getModInfo().getVersion());
-    }
-    
-    public static void debugLog(String msg) {
-    	log.info(msg);
-    }
+		Optional<? extends ModContainer> worldedit = ModList.get().getModContainerById("worldedit");
+		if (!worldedit.isPresent()) {
+				log.error("WorldEdit not found!!");
+			return;
+		}
+		we = worldedit.get();
+		wep = (ForgeWorldEdit) we.getMod();        
+		worldEdit = WorldEdit.getInstance();
+		log.info("Found worldedit " + we.getModInfo().getVersion());
+	}
+	
+	public static void debugLog(String msg) {
+		log.info(msg);
+	}
 }
