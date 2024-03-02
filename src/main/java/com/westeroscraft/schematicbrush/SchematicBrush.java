@@ -139,7 +139,7 @@ public class SchematicBrush {
 	@SubscribeEvent
 	public void onRegisterCommandEvent(RegisterCommandsEvent event) {
 		CommandDispatcher<CommandSourceStack> commandDispatcher = event.getDispatcher();
-		SCHMIGRATECommand.register(this, commandDispatcher);
+		// SCHMIGRATECommand.register(this, commandDispatcher);
 		SCHBRCommand.register(this, commandDispatcher);
 		SCHSETCommand.register(this, commandDispatcher);
 		SCHLISTCommand.register(this, commandDispatcher);
