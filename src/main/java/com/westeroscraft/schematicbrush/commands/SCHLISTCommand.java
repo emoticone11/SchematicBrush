@@ -16,7 +16,6 @@ import java.util.regex.Pattern;
 
 import org.enginehub.piston.exception.StopExecutionException;
 
-import com.mojang.brigadier.CommandDispatcher;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.LocalConfiguration;
 import com.sk89q.worldedit.LocalSession;
@@ -28,6 +27,7 @@ import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardWriter;
 import com.sk89q.worldedit.session.ClipboardHolder;
+import com.sk89q.worldedit.util.formatting.text.TextComponent;
 import com.sk89q.worldedit.util.formatting.text.TranslatableComponent;
 import com.sk89q.worldedit.util.io.Closer;
 import com.sk89q.worldedit.world.World;
@@ -43,10 +43,13 @@ import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.regions.RegionSelector;
 import com.sk89q.worldedit.regions.selector.limit.PermissiveSelectorLimits;
 
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -56,16 +59,54 @@ import net.minecraft.world.phys.Vec3;
 
 public class SCHLISTCommand {
 	private static SchematicBrush sb;
+
+  private static final int LINES_PER_PAGE = 10;
 	
 	public static void register(SchematicBrush mod, CommandDispatcher<CommandSourceStack> source) {
 		sb = mod;
 		SchematicBrush.log.info("Register schlist");
-		source.register(Commands.literal("schlist").executes((ctx) -> {
-			return schList(ctx.getSource());
-		}));
+    source.register(Commands.literal("schlist")
+      .executes(ctx -> schList(1, ctx.getSource()))
+      .then(Commands.argument("page", IntegerArgumentType.integer())
+        .executes(ctx -> schList(IntegerArgumentType.getInteger(ctx, "page"), ctx.getSource()))));
 	}
 
-	public static int schList(CommandSourceStack source) {
+	public static int schList(int page, CommandSourceStack source) {
+    if (source.getEntity() instanceof ServerPlayer) {
+			ServerPlayer player = (ServerPlayer) source.getEntity();
+      Actor actor = ForgeAdapter.adaptPlayer(player);
+
+      // Test for command access
+			if (!actor.hasPermission("schematicbrush.list")) {
+        source.sendFailure(new net.minecraft.network.chat.TextComponent("You do not have access to this command"));
+        return 1;
+			}
+
+      // Get schematic directory
+      File dir = sb.getSchemDirectory();
+			if (dir == null) {
+				source.sendFailure(new net.minecraft.network.chat.TextComponent("Server missing schematic directory"));
+				return 1;
+			}
+
+      // Get all schematic files
+			final Pattern p = Pattern.compile(".*\\." + sb.SCHEMATIC_EXT);
+			List<String> files = sb.getMatchingFiles(dir, p);
+			Collections.sort(files);
+			int cnt = (files.size() + LINES_PER_PAGE - 1) / LINES_PER_PAGE; // Number of pages
+			if (page > cnt)
+				page = cnt;
+			if (page < 1)
+				page = 1;
+			actor.printInfo(TextComponent.of("Page " + page + " of " + cnt + " (" + files.size() + " files)"));
+			for (int i = (page - 1) * LINES_PER_PAGE; (i < (page * LINES_PER_PAGE)) && (i < files.size()); i++) {
+				actor.printInfo(TextComponent.of(files.get(i)));
+			}
+
+    } else {
+			source.sendFailure(new net.minecraft.network.chat.TextComponent("Only usable by player"));
+		}
+
 		return 1;
 	}
 }

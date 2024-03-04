@@ -111,7 +111,7 @@ public class SchematicBrush {
 	public static ForgeWorldEdit wep;
 	public static WorldEdit worldEdit;
 
-	private static final String SCHEMATIC_EXT = "schematic";
+	public static final String SCHEMATIC_EXT = "schem";
 
 	// Schematic tree cache - used during initialization
 	private Map<File, List<String>> treecache = new HashMap<File, List<String>>();
@@ -225,7 +225,7 @@ public class SchematicBrush {
 		treecache = null;
 	}
 
-	private File getSchemDirectory() {
+	public File getSchemDirectory() {
 		return new File(wep.getWorkingDir().toFile(), wep.getPlatform().getConfiguration().saveDir);
 	}
 
