@@ -128,6 +128,12 @@ public class SCHSETCommand {
    * Create a new schemset, optionally initialized with a list of schematic definitions.
    */
   public static int schSetCreate(String setid, String schemsStr, CommandSourceStack source) {
+    Actor actor = sb.validateActor(source, "schematicbrush.set.create");
+    if (actor != null) {
+
+
+    }
+
     // TODO: split schemsStr by space
     return 1;
   }
@@ -136,6 +142,12 @@ public class SCHSETCommand {
    * Delete a schemset.
    */
   public static int schSetDelete(String setid, CommandSourceStack source) {
+    Actor actor = sb.validateActor(source, "schematicbrush.set.delete");
+    if (actor != null) {
+
+
+    }
+
     return 1;
   }
 
@@ -143,6 +155,12 @@ public class SCHSETCommand {
    * Append a list of schematic definitions to a schemset.
    */
   public static int schSetAppend(String setid, String schemsStr, CommandSourceStack source) {
+    Actor actor = sb.validateActor(source, "schematicbrush.set.append");
+    if (actor != null) {
+
+
+    }
+
     // TODO: split schemsStr by space
     return 1;
   }
@@ -151,6 +169,12 @@ public class SCHSETCommand {
    * Remove a list of schematic names from a schemset.
    */
   public static int schSetRemove(String setid, String schemsStr, CommandSourceStack source) {
+    Actor actor = sb.validateActor(source, "schematicbrush.set.remove");
+    if (actor != null) {
+
+
+    }
+
     // TODO: split schemsStr by space
     return 1;
   }
@@ -159,6 +183,12 @@ public class SCHSETCommand {
    * Set the description of a schemset.
    */
   public static int schSetSetDesc(String setid, String desc, CommandSourceStack source) {
+    Actor actor = sb.validateActor(source, "schematicbrush.set.setdesc");
+    if (actor != null) {
+
+
+    }
+
     return 1;
   }
 
@@ -166,6 +196,12 @@ public class SCHSETCommand {
    * Get the schematics within a schemset.
    */
   public static int schSetGet(String setid, CommandSourceStack source) {
+    Actor actor = sb.validateActor(source, "schematicbrush.set.get");
+    if (actor != null) {
+
+
+    }
+
     return 1;
   }
 }
