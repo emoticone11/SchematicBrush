@@ -261,7 +261,7 @@ public class SCHSETCommand {
             } else {
               List<SchematicDef> filtered = new ArrayList<SchematicDef>();
               for (SchematicDef def1 : ss.schematics) {
-                if (def1.name != def.name) {
+                if (!def1.name.equals(def.name)) {
                   filtered.add(def1);
                 }
               }
