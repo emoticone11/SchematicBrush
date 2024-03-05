@@ -90,7 +90,12 @@ public class SCHSETCommand {
         .then(Commands.argument("setid", StringArgumentType.word())
           .then(Commands.argument("schems", StringArgumentType.greedyString())
             .executes(ctx -> schSetRemove(StringArgumentType.getString(ctx, "setid"),
-                                          StringArgumentType.getString(ctx, "schems"), ctx.getSource())))))
+                                          StringArgumentType.getString(ctx, "schems"), false, ctx.getSource()))))
+        .then(Commands.literal("-exact")
+          .then(Commands.argument("setid", StringArgumentType.word())
+            .then(Commands.argument("schems", StringArgumentType.greedyString())
+              .executes(ctx -> schSetRemove(StringArgumentType.getString(ctx, "setid"),
+                                            StringArgumentType.getString(ctx, "schems"), true, ctx.getSource()))))))
       .then(Commands.literal("setdesc")
         .then(Commands.argument("setid", StringArgumentType.word())
           .then(Commands.argument("desc", StringArgumentType.string())
@@ -220,15 +225,59 @@ public class SCHSETCommand {
 
   /*
    * Remove a list of schematic names from a schemset.
+   * If optional argument 'exact' is given, use full schematic definition to match, otherwise just name.
    */
-  public static int schSetRemove(String setid, String schemsStr, CommandSourceStack source) {
+  public static int schSetRemove(String setid, String schemsStr, boolean exact, CommandSourceStack source) {
     Actor actor = sb.validateActor(source, "schematicbrush.set.remove");
     if (actor != null) {
 
+      // Existing ID?
+      if (!sb.sets.containsKey(setid)) {
+        actor.printInfo(TextComponent.of("Set '" + setid + "' not defined"));
+        return 1;
+      }
+      
+      SchematicSet ss = sb.sets.get(setid);
 
+      // Any other arguments are schematic IDs to remove
+      if (schemsStr != null) {
+        String[] schemids = schemsStr.split(" ");
+        for (String schemid : schemids) {
+          SchematicDef def = SchematicDef.parseSchematic(schemid);
+          if ((def != null) && sb.validateSchematicDef(actor, def)) {
+
+            // Remove exact matches using full schematicdef
+            if (exact) {
+              int idx = ss.schematics.indexOf(def);
+              if (idx >= 0) {
+                ss.schematics.remove(idx);
+                actor.printInfo(TextComponent.of("Schematic '" + schemid + "' removed"));
+              } else {
+                actor.printInfo(TextComponent.of("Schematic '" + schemid + "' not found in set"));
+              }
+
+            // Remove matches using only schematic name
+            } else {
+              List<SchematicDef> filtered = new ArrayList<SchematicDef>();
+              for (SchematicDef def1 : ss.schematics) {
+                if (def1.name != def.name) {
+                  filtered.add(def1);
+                }
+              }
+              ss.schematics = filtered;
+              actor.printInfo(TextComponent.of("Schematic '" + schemid + "' removed"));
+            }
+            
+          } else {
+            actor.printInfo(TextComponent.of("Schematic '" + schemid + "' invalid - ignored"));
+          }
+        }
+      }
+
+      sb.saveSchematicSets();
+      actor.printInfo(TextComponent.of("Set '" + setid + "' updated"));
     }
 
-    // TODO: split schemsStr by space
     return 1;
   }
 
