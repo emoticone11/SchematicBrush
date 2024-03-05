@@ -167,7 +167,17 @@ public class SCHSETCommand {
     Actor actor = sb.validateActor(source, "schematicbrush.set.delete");
     if (actor != null) {
 
+      // Existing ID?
+      if (!sb.sets.containsKey(setid)) {
+        actor.printInfo(TextComponent.of("Set '" + setid + "' not defined"));
+        return 1;
+      }
 
+      SchematicSet set = sb.sets.get(setid);
+      sb.removeSchematicSet(set);
+  
+      sb.saveSchematicSets();
+      actor.printInfo(TextComponent.of("Set '" + setid + "' deleted"));
     }
 
     return 1;
