@@ -131,10 +131,32 @@ public class SCHSETCommand {
     Actor actor = sb.validateActor(source, "schematicbrush.set.create");
     if (actor != null) {
 
+      // Existing ID?
+      if (sb.sets.containsKey(setid)) {
+        actor.printInfo(TextComponent.of("Set '" + setid + "' already defined"));
+        return 1;
+      }
 
+      SchematicSet ss = new SchematicSet(setid, "", null);
+      sb.addSchematicSet(ss);
+
+      // Any other arguments are schematic IDs to add
+      if (schemsStr != null) {
+        String[] schemids = schemsStr.split(" ");
+        for (String schemid : schemids) {
+          SchematicDef def = SchematicDef.parseSchematic(schemid);
+          if ((def != null) && sb.validateSchematicDef(actor, def)) {
+            ss.schematics.add(def);
+          } else {
+            actor.printInfo(TextComponent.of("Schematic '" + schemid + "' invalid - ignored"));
+          }
+        }
+      }
+
+      sb.saveSchematicSets();
+      actor.printInfo(TextComponent.of("Set '" + setid + "' created"));
     }
 
-    // TODO: split schemsStr by space
     return 1;
   }
 
