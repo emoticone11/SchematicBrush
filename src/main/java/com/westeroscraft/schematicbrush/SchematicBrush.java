@@ -470,6 +470,28 @@ public class SchematicBrush {
 
 		return (rslt) ? name : null;
 	}
+
+	/* 
+	 * Validate that actor is server player and has permissions; otherwise return null.
+	 */
+	public static Actor validateActor(CommandSourceStack source, String permissionGroup) {
+		if (source.getEntity() instanceof ServerPlayer) {
+			ServerPlayer player = (ServerPlayer) source.getEntity();
+      Actor actor = ForgeAdapter.adaptPlayer(player);
+
+			// Test for command access
+			if ((permissionGroup != null) && !actor.hasPermission(permissionGroup)) {
+        source.sendFailure(new TextComponent("You do not have access to this command"));
+        return null;
+			}
+
+			return actor;
+
+		} else {
+			source.sendFailure(new TextComponent("Only usable by server player"));
+			return null;
+		}
+	}
 	
 	public static void debugLog(String msg) {
 		log.info(msg);

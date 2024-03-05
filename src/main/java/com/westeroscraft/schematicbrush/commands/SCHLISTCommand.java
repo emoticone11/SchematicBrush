@@ -1,5 +1,7 @@
 package com.westeroscraft.schematicbrush.commands;
 
+import com.westeroscraft.schematicbrush.SchematicBrush;
+
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
@@ -32,7 +34,6 @@ import com.sk89q.worldedit.util.formatting.text.TranslatableComponent;
 import com.sk89q.worldedit.util.io.Closer;
 import com.sk89q.worldedit.world.World;
 import com.sk89q.worldedit.world.block.BlockState;
-import com.westeroscraft.schematicbrush.SchematicBrush;
 import com.sk89q.worldedit.forge.ForgeAdapter;
 import com.sk89q.worldedit.function.operation.ForwardExtentCopy;
 import com.sk89q.worldedit.function.operation.Operation;
@@ -72,20 +73,13 @@ public class SCHLISTCommand {
 	}
 
 	public static int schList(int page, CommandSourceStack source) {
-    if (source.getEntity() instanceof ServerPlayer) {
-			ServerPlayer player = (ServerPlayer) source.getEntity();
-      Actor actor = ForgeAdapter.adaptPlayer(player);
-
-      // Test for command access
-			if (!actor.hasPermission("schematicbrush.list")) {
-        source.sendFailure(new net.minecraft.network.chat.TextComponent("You do not have access to this command"));
-        return 1;
-			}
+    Actor actor = sb.validateActor(source, "schematicbrush.list");
+    if (actor != null) {
 
       // Get schematic directory
       File dir = sb.getSchemDirectory();
 			if (dir == null) {
-				source.sendFailure(new net.minecraft.network.chat.TextComponent("Server missing schematic directory"));
+        actor.printError(TextComponent.of("Server missing schematic directory"));
 				return 1;
 			}
 
@@ -103,9 +97,7 @@ public class SCHLISTCommand {
 				actor.printInfo(TextComponent.of(files.get(i)));
 			}
 
-    } else {
-			source.sendFailure(new net.minecraft.network.chat.TextComponent("Only usable by player"));
-		}
+    }
 
 		return 1;
 	}
