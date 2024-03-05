@@ -294,7 +294,11 @@ public class SchematicBrush {
 	/*
 	 * Save schematic sets to external JSON.
 	 */
-	public void saveSchematicSets(SchematicBrushConfig config, String filename) {
+	public void saveSchematicSets() {
+		saveSchematicSets(config, modConfigFilename);
+	}
+
+	private void saveSchematicSets(SchematicBrushConfig config, String filename) {
 		Gson gson = new GsonBuilder().setPrettyPrinting().create();
 		try {
 			FileWriter writer = new FileWriter(filename);
@@ -391,6 +395,28 @@ public class SchematicBrush {
 			}
 		}
 		return fname;
+	}
+
+	/*
+	 * Validate that a schematic definition corresponds to a valid schematic.
+	 */
+	public boolean validateSchematicDef(Actor player, SchematicDef def) {
+		File dir = getSchemDirectory();
+		try {
+			String fname = this.resolveName(player, dir, def.name, SCHEMATIC_EXT);
+			if (fname == null) {
+				return false;
+			}
+			File f = worldEdit.getSafeOpenFile(null, dir, fname, SCHEMATIC_EXT);
+			if (!f.exists()) {
+				return false;
+			}
+
+			return true;
+
+		} catch (FilenameException fx) {
+			return false;
+		}
 	}
 
 	/*

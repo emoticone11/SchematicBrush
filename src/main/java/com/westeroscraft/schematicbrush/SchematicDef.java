@@ -198,30 +198,5 @@ public class SchematicDef {
     schematic.weight = wt;
     schematic.offset = offset;
     return schematic;
-
-		// See if schematic name is valid
-    // TODO: move this check elsewhere, e.g. after schematicdef is created but before adding it to a schemset
-		// File dir = getSchemDirectory();
-		// try {
-		// 	String fname = this.resolveName(player, dir, name, SCHEMATIC_EXT);
-		// 	if (fname == null) {
-		// 		return null;
-		// 	}
-		// 	File f = we.getSafeOpenFile(null, dir, fname, SCHEMATIC_EXT);
-		// 	if (!f.exists()) {
-		// 		return null;
-		// 	}
-		// 	// If we're here, everything is good - make schematic object
-		// 	SchematicDef schematic = new SchematicDef();
-		// 	schematic.name = name;
-		// 	schematic.rotation = rot;
-		// 	schematic.flip = flip;
-		// 	schematic.weight = wt;
-		// 	schematic.offset = offset;
-
-		// 	return schematic;
-		// } catch (FilenameException fx) {
-		// 	return null;
-		// }
 	}
 }
