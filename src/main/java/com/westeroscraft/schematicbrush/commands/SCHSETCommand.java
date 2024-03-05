@@ -288,7 +288,17 @@ public class SCHSETCommand {
     Actor actor = sb.validateActor(source, "schematicbrush.set.setdesc");
     if (actor != null) {
 
-
+      // Existing ID?
+      if (!sb.sets.containsKey(setid)) {
+        actor.printInfo(TextComponent.of("Set '" + setid + "' not defined"));
+        return 1;
+      }
+      
+      SchematicSet ss = sb.sets.get(setid);
+      ss.desc = desc;
+  
+      sb.saveSchematicSets();
+      actor.printInfo(TextComponent.of("Set '" + setid + "' updated"));
     }
 
     return 1;
