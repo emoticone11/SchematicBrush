@@ -320,6 +320,14 @@ public class SchematicBrush {
 	}
 
 	/*
+	 * Remove schematic set from config and schematic set map.
+	 */
+	public void removeSchematicSet(SchematicSet set) {
+		config.schematicsets.remove(set);
+		sets.remove(set.name);
+	}
+
+	/*
 	 * Recursively build list of files within a given directory tree.
 	 */
 	private void buildTree(File dir, List<String> rslt, String path) {
