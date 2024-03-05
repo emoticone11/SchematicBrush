@@ -1,5 +1,9 @@
 package com.westeroscraft.schematicbrush.commands;
 
+import com.westeroscraft.schematicbrush.SchematicBrush;
+import com.westeroscraft.schematicbrush.SchematicDef;
+import com.westeroscraft.schematicbrush.SchematicSet;
+
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
@@ -9,6 +13,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.TreeSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -27,11 +32,11 @@ import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardWriter;
 import com.sk89q.worldedit.session.ClipboardHolder;
+import com.sk89q.worldedit.util.formatting.text.TextComponent;
 import com.sk89q.worldedit.util.formatting.text.TranslatableComponent;
 import com.sk89q.worldedit.util.io.Closer;
 import com.sk89q.worldedit.world.World;
 import com.sk89q.worldedit.world.block.BlockState;
-import com.westeroscraft.schematicbrush.SchematicBrush;
 import com.sk89q.worldedit.forge.ForgeAdapter;
 import com.sk89q.worldedit.function.operation.ForwardExtentCopy;
 import com.sk89q.worldedit.function.operation.Operation;
@@ -49,7 +54,6 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -97,33 +101,70 @@ public class SCHSETCommand {
           .executes(ctx -> schSetGet(StringArgumentType.getString(ctx, "setid"), ctx.getSource())))));
 	}
 
+  /*
+   * List all schemsets.
+   */
   public static int schSetList(String contains, CommandSourceStack source) {
+    Actor actor = sb.validateActor(source, "schematicbrush.set.list");
+    if (actor != null) {
+
+      int cnt = 0;
+      TreeSet<String> keys = new TreeSet<String>(sb.sets.keySet());
+      for (String k : keys) {
+        if ((contains != null) && (!k.contains(contains))) {
+          continue;
+        }
+        SchematicSet ss = sb.sets.get(k);
+        actor.printInfo(TextComponent.of(ss.name + ": desc='" + ss.desc + "'"));
+        cnt++;
+      }
+      actor.printInfo(TextComponent.of(cnt + " sets returned"));
+    }
+
     return 1;
   }
 
+  /*
+   * Create a new schemset, optionally initialized with a list of schematic definitions.
+   */
   public static int schSetCreate(String setid, String schemsStr, CommandSourceStack source) {
     // TODO: split schemsStr by space
     return 1;
   }
 
+  /*
+   * Delete a schemset.
+   */
   public static int schSetDelete(String setid, CommandSourceStack source) {
     return 1;
   }
 
+  /*
+   * Append a list of schematic definitions to a schemset.
+   */
   public static int schSetAppend(String setid, String schemsStr, CommandSourceStack source) {
     // TODO: split schemsStr by space
     return 1;
   }
 
+  /*
+   * Remove a list of schematic names from a schemset.
+   */
   public static int schSetRemove(String setid, String schemsStr, CommandSourceStack source) {
     // TODO: split schemsStr by space
     return 1;
   }
 
+  /*
+   * Set the description of a schemset.
+   */
   public static int schSetSetDesc(String setid, String desc, CommandSourceStack source) {
     return 1;
   }
 
+  /*
+   * Get the schematics within a schemset.
+   */
   public static int schSetGet(String setid, CommandSourceStack source) {
     return 1;
   }
