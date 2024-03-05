@@ -3,6 +3,7 @@ package com.westeroscraft.schematicbrush.commands;
 import com.westeroscraft.schematicbrush.SchematicBrush;
 import com.westeroscraft.schematicbrush.SchematicDef;
 import com.westeroscraft.schematicbrush.SchematicSet;
+import static com.westeroscraft.schematicbrush.SchematicDef.*;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -311,7 +312,35 @@ public class SCHSETCommand {
     Actor actor = sb.validateActor(source, "schematicbrush.set.get");
     if (actor != null) {
 
+      // Existing ID?
+      if (!sb.sets.containsKey(setid)) {
+        actor.printInfo(TextComponent.of("Set '" + setid + "' not defined"));
+        return 1;
+      }
 
+      SchematicSet ss = sb.sets.get(setid);
+
+      actor.printInfo(TextComponent.of("Description: " + ss.desc));
+
+      for (SchematicDef sd : ss.schematics) {
+        String det = sd.name;
+        if (sd.rotation != Rotation.ROT0) {
+          if (sd.rotation == Rotation.RANDOM)
+            det += ", rotate=RANDOM";
+          else
+            det += ", rotate=" + (90 * sd.rotation.ordinal()) + "\u00B0";
+        }
+        if (sd.flip != Flip.NONE) {
+          det += ", flip=" + sd.flip;
+        }
+        if (sd.weight > 0) {
+          det += ", weight=" + sd.weight;
+        }
+        actor.printInfo(TextComponent.of("Schematic: " + sd.toString() + " (" + det + ")"));
+      }
+      if ((ss.getTotalWeights() > 100) && (ss.getEqualWeightCount() > 0)) {
+        actor.printInfo(TextComponent.of("Warning: total weights exceed 100 - schematics without weights will never be selected"));
+      }
     }
 
     return 1;
