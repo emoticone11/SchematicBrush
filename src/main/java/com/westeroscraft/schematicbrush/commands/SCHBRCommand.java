@@ -1,5 +1,7 @@
 package com.westeroscraft.schematicbrush.commands;
 
+import com.westeroscraft.schematicbrush.SchematicBrush;
+
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
@@ -16,7 +18,6 @@ import java.util.regex.Pattern;
 
 import org.enginehub.piston.exception.StopExecutionException;
 
-import com.mojang.brigadier.CommandDispatcher;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.LocalConfiguration;
 import com.sk89q.worldedit.LocalSession;
@@ -31,6 +32,7 @@ import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
 import com.sk89q.worldedit.extent.clipboard.io.ClipboardWriter;
 import com.sk89q.worldedit.entity.Player;
 import com.sk89q.worldedit.session.ClipboardHolder;
+import com.sk89q.worldedit.util.formatting.text.TextComponent;
 import com.sk89q.worldedit.util.formatting.text.TranslatableComponent;
 import com.sk89q.worldedit.util.io.Closer;
 import com.sk89q.worldedit.util.Direction;
@@ -50,12 +52,13 @@ import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.regions.RegionSelector;
 import com.sk89q.worldedit.regions.selector.limit.PermissiveSelectorLimits;
 
-import com.westeroscraft.schematicbrush.SchematicBrush;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -69,12 +72,55 @@ public class SCHBRCommand {
 	public static void register(SchematicBrush mod, CommandDispatcher<CommandSourceStack> source) {
 		sb = mod;
 		SchematicBrush.log.info("Register schbr");
-		source.register(Commands.literal("schbr").executes((ctx) -> {
-			return schBr(ctx.getSource());
-		}));
+    // This is messy because brigadier doesn't appear to have a good system for optional flags...
+    source.register(Commands.literal("schbr")
+      .then(Commands.argument("args", StringArgumentType.greedyString())
+        .executes(ctx -> schBr(false, false, 0,
+                               StringArgumentType.getString(ctx, "args"), ctx.getSource())))
+      .then(Commands.literal("-incair")
+        .then(Commands.argument("args", StringArgumentType.greedyString())
+          .executes(ctx -> schBr(true, false, 0,
+                                 StringArgumentType.getString(ctx, "args"), ctx.getSource())))
+        .then(Commands.literal("-replaceall")
+          .then(Commands.argument("args", StringArgumentType.greedyString())
+            .executes(ctx -> schBr(true, true, 0,
+                                   StringArgumentType.getString(ctx, "args"), ctx.getSource())))
+          .then(Commands.literal("-yoff")
+            .then(Commands.argument("yoff", IntegerArgumentType.integer())
+              .then(Commands.argument("args", StringArgumentType.greedyString())
+                .executes(ctx -> schBr(true, true, IntegerArgumentType.getInteger(ctx, "yoff"),
+                                       StringArgumentType.getString(ctx, "args"), ctx.getSource()))))))
+        .then(Commands.literal("-yoff")
+          .then(Commands.argument("yoff", IntegerArgumentType.integer())
+            .then(Commands.argument("args", StringArgumentType.greedyString())
+              .executes(ctx -> schBr(true, false, IntegerArgumentType.getInteger(ctx, "yoff"),
+                                     StringArgumentType.getString(ctx, "args"), ctx.getSource()))))))
+      .then(Commands.literal("-replaceall")
+        .then(Commands.argument("args", StringArgumentType.greedyString())
+          .executes(ctx -> schBr(false, true, 0,
+                                 StringArgumentType.getString(ctx, "args"), ctx.getSource())))
+        .then(Commands.literal("-yoff")
+          .then(Commands.argument("yoff", IntegerArgumentType.integer())
+            .then(Commands.argument("args", StringArgumentType.greedyString())
+              .executes(ctx -> schBr(false, true, IntegerArgumentType.getInteger(ctx, "yoff"),
+                                     StringArgumentType.getString(ctx, "args"), ctx.getSource()))))))
+      .then(Commands.literal("-yoff")
+        .then(Commands.argument("yoff", IntegerArgumentType.integer())
+          .then(Commands.argument("args", StringArgumentType.greedyString())
+            .executes(ctx -> schBr(false, false, IntegerArgumentType.getInteger(ctx, "yoff"),
+                                   StringArgumentType.getString(ctx, "args"), ctx.getSource()))))));
 	}
 
-	public static int schBr(CommandSourceStack source) {
+  /*
+   * Apply the schembrush to a WorldEdit brush.
+   */
+	public static int schBr(boolean incair, boolean replaceall, int yoff, String args, CommandSourceStack source) {
+    Actor actor = sb.validateActor(source, "schematicbrush.brush.use");
+    if (actor != null) {
+
+      // TODO
+    }
+
 		return 1;
 	}
 }
