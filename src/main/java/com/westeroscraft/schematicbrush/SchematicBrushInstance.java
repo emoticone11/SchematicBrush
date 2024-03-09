@@ -5,6 +5,7 @@ import com.sk89q.worldedit.MaxChangedBlocksException;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.transform.AffineTransform;
 import com.sk89q.worldedit.util.Direction;
+import com.sk89q.worldedit.util.formatting.text.TextComponent;
 import com.sk89q.worldedit.command.tool.BrushTool;
 import com.sk89q.worldedit.command.tool.InvalidToolBindException;
 import com.sk89q.worldedit.command.tool.brush.Brush;
@@ -19,6 +20,7 @@ import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.session.PasteBuilder;
 import com.sk89q.worldedit.entity.Player;
+import com.sk89q.worldedit.extension.platform.Actor;
 import com.sk89q.worldedit.function.pattern.Pattern;
 import com.sk89q.worldedit.function.mask.BlockTypeMask;
 import com.sk89q.worldedit.function.operation.Operations;
@@ -28,12 +30,12 @@ import com.sk89q.worldedit.world.block.BlockTypes;
 import static com.westeroscraft.schematicbrush.SchematicDef.*;
 
 public class SchematicBrushInstance implements Brush {
-  SchematicSet set;
-  Player player;
-  boolean skipair;
-  boolean replaceall;
-  int yoff;
-  Placement place;
+  public SchematicSet set;
+  public Player player;
+  public boolean skipair;
+  public boolean replaceall;
+  public int yoff;
+  public Placement place;
 
   private SchematicBrush sb;
 
@@ -69,7 +71,7 @@ public class SchematicBrushInstance implements Brush {
     try {
       cliph = sess.getClipboard();
     } catch (EmptyClipboardException e) {
-      player.printError("Schematic is empty");
+      player.printError(TextComponent.of("Schematic is empty"));
       return;
     }
     AffineTransform trans = new AffineTransform();
@@ -116,7 +118,7 @@ public class SchematicBrushInstance implements Brush {
     PasteBuilder pb = cliph.createPaste(editsession).to(ppos)
         .ignoreAirBlocks(skipair);
     Operations.completeLegacy(pb.build());
-    player.print("Applied '" + schfilename + "', flip=" + flip.name() + ", rot=" + rot.deg + ", place="
-        + place.name());
+    player.printInfo(TextComponent.of("Applied '" + schfilename + "', flip=" + flip.name() + ", rot="
+                                      + rot.deg + ", place=" + place.name()));
   }
 }

@@ -430,7 +430,7 @@ public class SchematicBrush {
 	/*
 	 * Load a schematic name from a file into the player's clipboard.
 	 */
-	public String loadSchematicIntoClipboard(Player player, LocalSession sess, String fname, int[] bottomY) {
+	public String loadSchematicIntoClipboard(Actor player, LocalSession sess, String fname, int[] bottomY) {
 		File dir = getSchemDirectory();
 		if (dir == null) {
 			player.printError("Schematic directory for '" + fname + "' missing");
